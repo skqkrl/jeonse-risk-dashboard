@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>서울시 전세사기 고위험지역 탐지 대시보드</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.15.0/Recharts.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --slate-900: #0F172A;
+      --slate-800: #1E293B;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748B;
+      --slate-400: #94A3B8;
+      --slate-300: #CBD5E1;
+      --slate-200: #E2E8F0;
+      --slate-100: #F1F5F9;
+      --slate-50: #F8FAFC;
+      --red-600: #DC2626;
+      --red-50: #FEF2F2;
+      --orange-500: #F97316;
+      --orange-50: #FFF7ED;
+      --green-500: #22C55E;
+      --font-sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--slate-100);
+      color: var(--slate-800);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--slate-300); border-radius: 3px; }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideRight {
+      from { opacity: 0; transform: translateX(-12px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.15); }
+      50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); }
+    }
+
+    .fade-up { animation: fadeUp 0.5s ease-out both; }
+    .fade-in { animation: fadeIn 0.4s ease-out both; }
+    .slide-right { animation: slideRight 0.4s ease-out both; }
+
+    .delay-1 { animation-delay: 0.08s; }
+    .delay-2 { animation-delay: 0.16s; }
+    .delay-3 { animation-delay: 0.24s; }
+    .delay-4 { animation-delay: 0.32s; }
+    .delay-5 { animation-delay: 0.40s; }
+
+    /* Header */
+    .header {
+      background: var(--slate-900);
+      padding: 32px 36px 24px;
+      color: var(--slate-50);
+      position: relative;
+      overflow: hidden;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 300px; height: 100%;
+      background: linear-gradient(135deg, transparent 40%, rgba(100,116,139,0.08) 100%);
+      pointer-events: none;
+    }
+    .header-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--slate-500);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .header h1 {
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      line-height: 1.3;
+    }
+    .header-sub {
+      font-size: 13px;
+      color: var(--slate-400);
+      margin-top: 6px;
+      font-weight: 400;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      background: var(--slate-800);
+      border-bottom: 1px solid var(--slate-700);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 14px 16px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      color: var(--slate-400);
+      background: transparent;
+      border-bottom: 2px solid transparent;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+    .tab-btn:hover { color: var(--slate-300); background: rgba(255,255,255,0.03); }
+    .tab-btn.active {
+      color: var(--slate-50);
+      font-weight: 700;
+      background: rgba(255,255,255,0.05);
+      border-bottom-color: var(--slate-50);
+    }
+
+    /* Content */
+    .content {
+      padding: 28px 32px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    /* Stat Cards */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      border-radius: 12px;
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card.dark {
+      background: var(--slate-800);
+      border: 1px solid var(--slate-700);
+    }
+    .stat-card.light {
+      background: white;
+      border: 1px solid var(--slate-200);
+    }
+    .stat-label {
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    .stat-card.dark .stat-label { color: var(--slate-400); }
+    .stat-card.light .stat-label { color: var(--slate-500); }
+    .stat-value {
+      font-family: var(--font-mono);
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    .stat-card.dark .stat-value { color: var(--slate-50); }
+    .stat-card.light .stat-value { color: var(--slate-900); }
+    .stat-sub {
+      font-size: 11px;
+      margin-top: 6px;
+    }
+    .stat-card.dark .stat-sub { color: var(--slate-500); }
+    .stat-card.light .stat-sub { color: var(--slate-400); }
+
+    /* Section */
+    .section-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--slate-900);
+      margin-bottom: 4px;
+      letter-spacing: -0.3px;
+    }
+    .section-sub {
+      font-size: 12px;
+      color: var(--slate-500);
+      margin-bottom: 16px;
+      font-weight: 400;
+    }
+
+    /* Chart Container */
+    .chart-box {
+      background: white;
+      border-radius: 14px;
+      padding: 24px 20px;
+      margin-bottom: 28px;
+      border: 1px solid var(--slate-200);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .chart-caption {
+      text-align: center;
+      font-size: 12px;
+      color: var(--slate-500);
+      margin-top: 12px;
+      line-height: 1.6;
+    }
+    .chart-caption b { color: var(--slate-800); font-weight: 700; }
+
+    /* Pipeline */
+    .pipeline {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 32px;
+    }
+    .pipeline-step {
+      flex: 1;
+      min-width: 120px;
+      background: white;
+      border: 1px solid var(--slate-200);
+      border-radius: 10px;
+      padding: 18px 14px;
+      text-align: center;
+      position: relative;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .pipeline-step:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .pipeline-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--slate-400);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .pipeline-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--slate-900);
+    }
+    .pipeline-desc {
+      font-size: 11px;
+      color: var(--slate-500);
+      margin-top: 4px;
+    }
+    .pipeline-arrow {
+      display: flex;
+      align-items: center;
+      color: var(--slate-300);
+      font-size: 14px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* Risk Cards */
+    .risk-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .risk-card {
+      flex: 1;
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .risk-card.strong {
+      background: var(--red-50);
+      border-left: 4px solid var(--red-600);
+    }
+    .risk-card.medium {
+      background: var(--orange-50);
+      border-left: 4px solid var(--orange-500);
+    }
+    .risk-card-title {
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .risk-card.strong .risk-card-title { color: var(--red-600); }
+    .risk-card.medium .risk-card-title { color: var(--orange-500); }
+    .risk-card-desc {
+      font-size: 12px;
+      color: var(--slate-500);
+      margin-top: 4px;
+    }
+
+    /* Insight Box */
+    .insight-box {
+      background: white;
+      border-radius: 14px;
+      padding: 24px 28px;
+      border: 1px solid var(--slate-200);
+      margin-bottom: 28px;
+    }
+    .insight-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .insight-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--red-50);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      animation: pulseGlow 2.5s ease-in-out infinite;
+    }
+    .insight-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--slate-900);
+    }
+    .insight-subtitle {
+      font-size: 13px;
+      color: var(--slate-500);
+      margin-top: 2px;
+    }
+    .insight-divider {
+      border: none;
+      border-top: 1px solid var(--slate-200);
+      margin: 0 0 16px;
+    }
+    .insight-item {
+      font-size: 13px;
+      color: var(--slate-600);
+      line-height: 1.8;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .insight-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 7px;
+    }
+
+    /* Cluster Layout */
+    .cluster-layout {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .cluster-chart-col {
+      flex: 1 1 300px;
+    }
+    .cluster-list-col {
+      flex: 1 1 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .cluster-item {
+      background: white;
+      border-radius: 10px;
+      padding: 14px 16px;
+      cursor: pointer;
+      border: 1px solid var(--slate-200);
+      transition: all 0.2s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cluster-item:hover { background: var(--slate-50); }
+    .cluster-item.selected { background: var(--slate-50); border-color: var(--slate-800); }
+    .cluster-item-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--slate-900);
+    }
+    .cluster-item-count {
+      font-size: 12px;
+      color: var(--slate-500);
+      font-family: var(--font-mono);
+    }
+    .cluster-detail {
+      background: white;
+      border-radius: 14px;
+      padding: 24px 28px;
+      margin-bottom: 28px;
+      border: 1px solid var(--slate-200);
+    }
+    .cluster-detail h3 {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--slate-900);
+      margin-bottom: 14px;
+    }
+    .cluster-detail-row {
+      font-size: 13px;
+      color: var(--slate-600);
+      line-height: 1.8;
+      margin-bottom: 6px;
+    }
+    .cluster-detail-label {
+      font-weight: 700;
+      color: var(--slate-900);
+    }
+
+    /* Tags */
+    .tag-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tag {
+      background: white;
+      border: 1px solid var(--slate-200);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      font-weight: 500;
+      color: var(--slate-600);
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 24px 28px 36px;
+      font-size: 11px;
+      color: var(--slate-400);
+    }
+
+    @media (max-width: 640px) {
+      .content { padding: 20px 16px; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .pipeline { flex-wrap: wrap; }
+      .pipeline-arrow { display: none; }
+      .risk-row { flex-direction: column; }
+      .cluster-layout { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+    const {
+      BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+      RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+      PieChart, Pie, Cell, Legend
+    } = Recharts;
+
+    // === DATA ===
+    const guData = [
+      { name: "관악구", score: 1.23, z3: 0.042, over1: 0.038, top10: 0.112, surge: 0.029 },
+      { name: "노원구", score: 0.88, z3: 0.031, over1: 0.029, top10: 0.098, surge: 0.022 },
+      { name: "도봉구", score: 0.59, z3: 0.025, over1: 0.024, top10: 0.089, surge: 0.018 },
+      { name: "성북구", score: 0.43, z3: 0.019, over1: 0.026, top10: 0.082, surge: 0.014 },
+      { name: "동작구", score: 0.38, z3: 0.017, over1: 0.018, top10: 0.078, surge: 0.013 },
+    ];
+
+    const dongData = [
+      { name: "동소문동2가", score: 3.81 },
+      { name: "동소문동1가", score: 1.49 },
+      { name: "상산동5가", score: 1.15 },
+      { name: "한강동3가", score: 1.13 },
+      { name: "성북동", score: 0.75 },
+    ];
+
+    const clusterData = [
+      { name: "고평가 지역형", full: "Cluster 0 · 고평가 지역형", count: 45, ratio: 32.1, color: "#94A3B8", desc: "전반적 위험스코어는 낮으나 전세가율 자체가 매우 높음", strategy: "고전세율 거래 모니터링 강화" },
+      { name: "극단 고위험군", full: "Cluster 1 · 극단 고위험군", count: 8, ratio: 5.7, color: "#DC2626", desc: "모든 지표에서 이상 수준, 소수 행정동에 집중", strategy: "집중관리구역 지정, 거래 전수조사" },
+      { name: "불균형 고위험군", full: "Cluster 2 · 불균형 고위험군", count: 28, ratio: 20.0, color: "#F97316", desc: "전세가율은 낮지만 노후·이상거래 등 특정 지표 취약", strategy: "취약 지표별 맞춤 관리 (노후주택·거래 패턴)" },
+      { name: "저위험 안정군", full: "Cluster 3 · 저위험 안정군", count: 59, ratio: 42.1, color: "#22C55E", desc: "다수 동 포함, 전반적 위험 낮음", strategy: "분기별 지표 업데이트, 추세 모니터링" },
+    ];
+
+    const matchingData = [
+      { name: "1차: 구×유형(4)×분기×면적(4)", fail: 18.69 },
+      { name: "2차: 구×유형(4)×반기×면적(3)", fail: 17.94 },
+      { name: "최종: 구×유형(2)×반기×면적(3)", fail: 0.32 },
+    ];
+
+    const radarDataGu = guData.map(g => ({
+      name: g.name,
+      "Z3+": +(g.z3 * 1000).toFixed(1),
+      "전세가율≥1.0": +(g.over1 * 1000).toFixed(1),
+      "상위10%": +(g.top10 * 1000).toFixed(1),
+      "급등": +(g.surge * 1000).toFixed(1),
+    }));
+
+    const RADAR_COLORS = ["#0F172A", "#475569", "#64748B", "#94A3B8", "#CBD5E1"];
+    const BAR_COLORS_GU = ["#0F172A", "#334155", "#475569", "#94A3B8", "#CBD5E1"];
+
+    const tabs = [
+      { id: "overview", label: "Overview" },
+      { id: "gu", label: "자치구 위험도" },
+      { id: "dong", label: "행정동 위험도" },
+      { id: "cluster", label: "리스크 유형" },
+    ];
+
+    const pipelineSteps = [
+      { num: "01", title: "전처리", desc: "8개 파일 정제·통합" },
+      { num: "02", title: "전세가율", desc: "집단평균매매가 매칭" },
+      { num: "03", title: "이상탐지", desc: "Z-score 4개 지표" },
+      { num: "04", title: "위험분석", desc: "자치구→행정동 2단계" },
+      { num: "05", title: "유형화", desc: "KMeans k=4" },
+    ];
+
+    function Dashboard() {
+      const [activeTab, setActiveTab] = useState("overview");
+      const [selectedCluster, setSelectedCluster] = useState(null);
+
+      return (
+        <div>
+          {/* Header */}
+          <div className="header">
+            <div className="header-tag fade-up">Seoul Jeonse Fraud Risk Detection</div>
+            <h1 className="fade-up delay-1">서울시 전세사기 고위험지역 탐지 대시보드</h1>
+            <p className="header-sub fade-up delay-2">국토교통부 실거래가 데이터 (2023.6 ~ 2024.12) · 전세 169,779건 · 매매 169,779건</p>
+          </div>
+
+          {/* Tabs */}
+          <div className="tabs">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
+                onClick={() => { setActiveTab(tab.id); setSelectedCluster(null); }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="content">
+
+            {/* ========== OVERVIEW ========== */}
+            {activeTab === "overview" && (
+              <div className="fade-in">
+                <div className="stat-grid">
+                  {[
+                    { label: "분석 대상 전세 거래", value: "169,779건", sub: "4개 주택유형 × 2개년", dark: true },
+                    { label: "전세가율 매칭 성공률", value: "99.68%", sub: "매칭 실패율 0.32%", dark: true },
+                    { label: "최고 위험 자치구", value: "관악구", sub: "종합위험지수 1.23", dark: false },
+                    { label: "최고 위험 행정동", value: "동소문동2가", sub: "위험스코어 3.81", dark: false },
+                  ].map((s, i) => (
+                    <div key={i} className={`stat-card ${s.dark ? "dark" : "light"} fade-up delay-${i+1}`}>
+                      <div className="stat-label">{s.label}</div>
+                      <div className="stat-value">{s.value}</div>
+                      <div className="stat-sub">{s.sub}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="section-title">전세가율 매칭 최적화 과정</div>
+                <div className="section-sub">매칭 실패율을 최소화하기 위한 조건조합 3회 반복 실험</div>
+                <div className="chart-box">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={matchingData} layout="vertical" margin={{ left: 10, right: 40, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                      <XAxis type="number" domain={[0, 22]} tick={{ fontSize: 11, fill: "#64748B" }} unit="%" />
+                      <YAxis type="category" dataKey="name" width={200} tick={{ fontSize: 11, fill: "#475569" }} />
+                      <Tooltip formatter={(v) => `${v}%`} contentStyle={{ borderRadius: 8, border: "1px solid #E2E8F0", fontSize: 12 }} />
+                      <Bar dataKey="fail" name="매칭 실패율" radius={[0, 6, 6, 0]}>
+                        {matchingData.map((_, i) => (
+                          <Cell key={i} fill={i === 2 ? "#0F172A" : "#CBD5E1"} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <div className="chart-caption">
+                    유형 4종→2종, 분기→반기, 면적 4구간→3구간 조정으로 <b>18.69% → 0.32%</b> 개선
+                  </div>
+                </div>
+
+                <div className="section-title">분석 파이프라인</div>
+                <div className="section-sub" style={{ marginBottom: 12 }}> </div>
+                <div className="pipeline">
+                  {pipelineSteps.map((step, i) => (
+                    <React.Fragment key={i}>
+                      <div className={`pipeline-step fade-up delay-${i+1}`}>
+                        <div className="pipeline-num">{step.num}</div>
+                        <div className="pipeline-title">{step.title}</div>
+                        <div className="pipeline-desc">{step.desc}</div>
+                      </div>
+                      {i < 4 && <div className="pipeline-arrow">→</div>}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ========== 자치구 위험도 ========== */}
+            {activeTab === "gu" && (
+              <div className="fade-in">
+                <div className="section-title">자치구별 종합위험지수 Top 5</div>
+                <div className="section-sub">4개 위험지표 가중합 기반 산출</div>
+                <div className="chart-box">
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={guData} margin={{ left: -10, right: 20, top: 10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 13, fill: "#475569", fontWeight: 600 }} />
+                      <YAxis tick={{ fontSize: 11, fill: "#64748B" }} domain={[0, 1.5]} />
+                      <Tooltip
+                        formatter={(v) => v.toFixed(2)}
+                        contentStyle={{ borderRadius: 8, border: "1px solid #E2E8F0", fontSize: 12 }}
+                      />
+                      <Bar dataKey="score" name="종합위험지수" radius={[6, 6, 0, 0]}>
+                        {guData.map((_, i) => (
+                          <Cell key={i} fill={BAR_COLORS_GU[i]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="section-title">자치구별 위험지표 레이더 비교</div>
+                <div className="section-sub">지표값 ×1000 스케일 (비교 용이성)</div>
+                <div className="chart-box">
+                  <ResponsiveContainer width="100%" height={320}>
+                    <RadarChart data={radarDataGu}>
+                      <PolarGrid stroke="#E2E8F0" />
+                      <PolarAngleAxis dataKey="name" tick={{ fontSize: 12, fill: "#475569" }} />
+                      <PolarRadiusAxis tick={{ fontSize: 10, fill: "#94A3B8" }} />
+                      {["Z3+", "전세가율≥1.0", "상위10%", "급등"].map((key, i) => (
+                        <Radar key={key} name={key} dataKey={key} stroke={RADAR_COLORS[i]} fill={RADAR_COLORS[i]} fillOpacity={0.1} strokeWidth={2} />
+                      ))}
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #E2E8F0", fontSize: 12 }} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="section-title">위험 등급 기준</div>
+                <div className="section-sub" style={{ marginBottom: 8 }}> </div>
+                <div className="risk-row">
+                  <div className="risk-card strong">
+                    <div className="risk-card-title">강한 위험 (risk_strong)</div>
+                    <div className="risk-card-desc">전세가율 ≥ 1.0 OR Z-score ≥ 3</div>
+                  </div>
+                  <div className="risk-card medium">
+                    <div className="risk-card-title">중간 위험 (risk_medium)</div>
+                    <div className="risk-card-desc">전세가율 ≥ 0.9 OR Z-score ≥ 2</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ========== 행정동 위험도 ========== */}
+            {activeTab === "dong" && (
+              <div className="fade-in">
+                <div className="section-title">행정동별 위험스코어 Top 5</div>
+                <div className="section-sub">상위 위험 자치구 내, 거래건수 100건 이상 행정동 대상</div>
+                <div className="chart-box">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={dongData} layout="vertical" margin={{ left: 10, right: 40, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                      <XAxis type="number" domain={[0, 4.5]} tick={{ fontSize: 11, fill: "#64748B" }} />
+                      <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 13, fill: "#475569", fontWeight: 600 }} />
+                      <Tooltip
+                        formatter={(v) => v.toFixed(2)}
+                        contentStyle={{ borderRadius: 8, border: "1px solid #E2E8F0", fontSize: 12 }}
+                      />
+                      <Bar dataKey="score" name="위험스코어" radius={[0, 6, 6, 0]}>
+                        {dongData.map((_, i) => (
+                          <Cell key={i} fill={i === 0 ? "#DC2626" : i < 3 ? "#475569" : "#CBD5E1"} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="section-title">핵심 인사이트</div>
+                <div className="section-sub" style={{ marginBottom: 8 }}> </div>
+                <div className="insight-box">
+                  <div className="insight-header">
+                    <div className="insight-icon">⚠️</div>
+                    <div>
+                      <div className="insight-title">동소문동2가 — 압도적 고위험</div>
+                      <div className="insight-subtitle">위험스코어 3.81, 2위(동소문동1가 1.49) 대비 <b>약 2.6배</b></div>
+                    </div>
+                  </div>
+                  <hr className="insight-divider" />
+                  <div className="insight-item">
+                    <span className="insight-dot" style={{ background: "#DC2626" }}></span>
+                    <span>Top 5 중 4개 행정동이 <b>성북구</b>에 집중 → 성북구 내 특정 지역에 위험이 편중</span>
+                  </div>
+                  <div className="insight-item">
+                    <span className="insight-dot" style={{ background: "#475569" }}></span>
+                    <span>한강동3가(용산구)는 자치구 종합위험지수는 낮지만 개별 행정동 위험은 높은 사례</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ========== 리스크 유형 ========== */}
+            {activeTab === "cluster" && (
+              <div className="fade-in">
+                <div className="section-title">KMeans 클러스터링 리스크 유형</div>
+                <div className="section-sub">StandardScaler 정규화 + KMeans (k=4, Elbow Method) · 5개 위험변수 입력</div>
+
+                <div className="cluster-layout">
+                  <div className="cluster-chart-col">
+                    <div className="chart-box" style={{ marginBottom: 0 }}>
+                      <ResponsiveContainer width="100%" height={260}>
+                        <PieChart>
+                          <Pie
+                            data={clusterData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={58}
+                            outerRadius={95}
+                            dataKey="count"
+                            onClick={(_, i) => setSelectedCluster(i)}
+                            style={{ cursor: "pointer" }}
+                            paddingAngle={2}
+                          >
+                            {clusterData.map((entry, i) => (
+                              <Cell
+                                key={i}
+                                fill={entry.color}
+                                stroke={selectedCluster === i ? "#0F172A" : "#fff"}
+                                strokeWidth={selectedCluster === i ? 3 : 2}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(v, _, props) => [`${v}개 동 (${props.payload.ratio}%)`, props.payload.full]}
+                            contentStyle={{ borderRadius: 8, border: "1px solid #E2E8F0", fontSize: 12 }}
+                          />
+                          <Legend
+                            formatter={(value) => <span style={{ fontSize: 11, color: "#475569" }}>{value}</span>}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="chart-caption">클릭하여 클러스터 상세 보기</div>
+                    </div>
+                  </div>
+
+                  <div className="cluster-list-col">
+                    {clusterData.map((c, i) => (
+                      <div
+                        key={i}
+                        className={`cluster-item ${selectedCluster === i ? "selected" : ""}`}
+                        onClick={() => setSelectedCluster(i)}
+                        style={{ borderLeft: `4px solid ${c.color}` }}
+                      >
+                        <span className="cluster-item-name">{c.full}</span>
+                        <span className="cluster-item-count">{c.count}개 동 · {c.ratio}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedCluster !== null && (
+                  <div className="cluster-detail slide-right" style={{ borderLeft: `4px solid ${clusterData[selectedCluster].color}` }}>
+                    <h3>{clusterData[selectedCluster].full}</h3>
+                    <div className="cluster-detail-row">
+                      <span className="cluster-detail-label">특성: </span>
+                      {clusterData[selectedCluster].desc}
+                    </div>
+                    <div className="cluster-detail-row">
+                      <span className="cluster-detail-label">대응 전략: </span>
+                      {clusterData[selectedCluster].strategy}
+                    </div>
+                  </div>
+                )}
+
+                <div className="section-title">입력 변수 (5개)</div>
+                <div className="section-sub" style={{ marginBottom: 8 }}> </div>
+                <div className="tag-row">
+                  {["동_강한위험비율", "동_급등비율", "동_평균대비초과율", "동_z3비율", "동_전세가율1초과비율"].map((v, i) => (
+                    <div key={i} className={`tag fade-up delay-${i+1}`}>{v}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          <div className="footer">
+            데이터 출처: 국토교통부 부동산 실거래가 공개시스템 (2023.6 ~ 2024.12) · 통계 데이터 활용대회 참가 프로젝트
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<Dashboard />, document.getElementById("root"));
+  </script>
+</body>
+</html>
