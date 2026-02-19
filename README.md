@@ -47,7 +47,7 @@
    ├── 01_preprocessing.ipynb          # 전세·매매 데이터 전처리 및 통합
    ├── 02_jeonse_ratio.ipynb           # 전세가율 산출 (조건조합 최적화)
    └── 03_risk_detection_model.ipynb   # 이상탐지 · 위험지역 분석 · 클러스터링
-
+```
 ---
 
 ## 주요 분석 과정 및 결과
