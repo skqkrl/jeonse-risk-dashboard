@@ -1,4 +1,4 @@
-# fraud-risk-detection-project
+# jeonse-risk-dashboard
 > 전세사기 예방을 위한 이상거래 탐지 기반 서울시 고위험지역 사전탐지 분석
 
 통계 데이터 활용대회 참가 프로젝트
